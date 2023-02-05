@@ -1,0 +1,3 @@
+[submodule "src/Augmented-DDTagger"]
+	path = src/Augmented-DDTagger
+	url = https://github.com/AdjointOperator/Augmented-DDTagger
