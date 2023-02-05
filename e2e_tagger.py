@@ -163,7 +163,8 @@ def an_astolfo_is_1girl(all_tags: list[str]):
 
 useless_tags = set(
     ['virtual_youtuber'] +
-    [tag for tag in all_tags if 'alternate_' in tag]
+    [tag for tag in all_tags if 'alternate_' in tag] +
+    ['genderswap', 'genderswap_(mtf)', 'genderswap_(ftm)', 'ambiguous_gender']
 )
 
 
