@@ -241,7 +241,8 @@ def _img_dirwalk_with_postprocessor(path: Path, postprocessor: Postprocess):
         if p.is_dir():
             _postprocessor = postprocessor.update(p / 'rules.yaml')
             if not p.name.startswith('_'):
-                _postprocessor.prepend.append(p.name)
+                name = p.name.split('#', 1)[0]
+                _postprocessor.prepend.append(name)
             yield from _img_dirwalk_with_postprocessor(p, _postprocessor)
         else:
             if p.suffix[1:] in known_img_suffix:
