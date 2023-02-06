@@ -36,9 +36,6 @@ class TaggerConfig:
         self._keep_catagories = set(self.keep_catagories)
 
 
-with open('tag_groups_flattened.json') as f:
-    tag_groups = json.load(f)
-
 raw_tags = np.loadtxt('src/Augmented-DDTagger/models/wd-v1-4-swinv2-tagger-v2/selected_tags.csv', dtype=str, delimiter=',')[1:]
 
 all_tags = raw_tags[:, 1].tolist()
