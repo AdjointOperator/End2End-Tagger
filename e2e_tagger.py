@@ -77,13 +77,6 @@ def get_original_label(img_path: Path) -> str | None:
         with open(img_path.with_suffix('.txt')) as f:
             return f.read().strip()
 
-# """
-# Args:
-#     danbooru_tags: category [general, meta, character, artist] -> tag with _
-#     tagger_preds: tag -> confidence. Sorted by confidence in descending
-#     original_tags: original tags
-# """
-
 
 def combine_dd_first(config: TaggerConfig, danbooru_tags: dict[str, str] | None, tagger_preds: dict[str, float], original_label: str):
     if danbooru_tags:
@@ -94,6 +87,12 @@ def combine_dd_first(config: TaggerConfig, danbooru_tags: dict[str, str] | None,
 
 
 def combine_AND(config: TaggerConfig, danbooru_tags: dict[str, str] | None, tagger_preds: dict[str, float], original_label: str):
+    """
+    Args:
+        danbooru_tags: category [general, meta, character, artist] -> tag with _
+        tagger_preds: tag -> confidence. Sorted by confidence in descending
+        original_tags: original tags
+    """
     if danbooru_tags:
         dd_tags = set([tag for cate, taglist in danbooru_tags.items() for tag in taglist if cate in config._keep_catagories])
         return_tags = []
@@ -260,7 +259,7 @@ def get_args():
     parser.add_argument('--path', '-p', type=str, required=False, default='/tmp/momoko', help='Path to image or directory')
     parser.add_argument('--model_path', type=str, required=False, default=None, help='Path to model for AugDD')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size for inference in AugDD')
-    parser.add_argument('--backend', type=str, default='WD-SwinV2', help='Backend model to use in AugDD')
+    parser.add_argument('--backend', type=str, default='WD14-SwinV2', help='Backend model to use in AugDD', choices=['WD14-SwinV2', 'WD14-ConvNext', 'DeepDanbooru', 'WD14'])
     parser.add_argument('--nproc', type=int, default=-1, help='Number of processes to use for AugDD. -1 means all')
     parser.add_argument('--max_chunk', type=int, default=16, help='Maximum number of batches to process before one save in AugDD')
     parser.add_argument('--danbooru-concurrency', type=int, default=2, help='Number of concurrent requests to Danbooru')
