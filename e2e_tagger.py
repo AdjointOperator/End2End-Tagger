@@ -237,13 +237,15 @@ class Postprocess:
 
 
 def _img_dirwalk_with_postprocessor(path: Path, postprocessor: Postprocess):
+
+    postprocessor = postprocessor.update(path / 'rules.yaml')
+    if not path.name.startswith('_'):
+        name = path.name.split('#', 1)[0].strip()
+        postprocessor.prepend.append(name)
+
     for p in path.iterdir():
         if p.is_dir():
-            _postprocessor = postprocessor.update(p / 'rules.yaml')
-            if not p.name.startswith('_'):
-                name = p.name.split('#', 1)[0].strip()
-                _postprocessor.prepend.append(name)
-            yield from _img_dirwalk_with_postprocessor(p, _postprocessor)
+            yield from _img_dirwalk_with_postprocessor(p, postprocessor)
         else:
             if p.suffix[1:] in known_img_suffix:
                 yield p, postprocessor
@@ -251,8 +253,8 @@ def _img_dirwalk_with_postprocessor(path: Path, postprocessor: Postprocess):
 
 def img_dirwalk_with_postprocessor(path: Path | str):
     path = Path(path)
-    postprocess = Postprocess(prepend=[path.name]) if not path.name.startswith('_') else Postprocess()
-    yield from _img_dirwalk_with_postprocessor(path, postprocess.update(path / 'rules.yaml'))
+    postprocess = Postprocess()
+    yield from _img_dirwalk_with_postprocessor(path, postprocess)
 
 
 def get_args():
