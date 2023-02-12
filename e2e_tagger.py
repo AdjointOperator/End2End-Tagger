@@ -256,7 +256,7 @@ def img_dirwalk_with_postprocessor(path: Path | str):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', '-p', type=str, required=False, default='/tmp/momoko', help='Path to image or directory')
+    parser.add_argument('--path', '-p', type=str, required=True, help='Path to image or directory')
     parser.add_argument('--model_path', type=str, required=False, default=None, help='Path to model for AugDD')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size for inference in AugDD')
     parser.add_argument('--backend', type=str, default='WD14-SwinV2', help='Backend model to use in AugDD', choices=['WD14-SwinV2', 'WD14-ConvNext', 'DeepDanbooru', 'WD14'])

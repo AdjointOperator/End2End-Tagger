@@ -16,6 +16,9 @@ from lxml import html
 from PIL import Image
 from tqdm.auto import tqdm
 
+import os
+DD_API_KEY = None
+DD_USER_NAME = None
 
 MD5_PREFER_FNAME = True
 LONG_SIDE = 768
@@ -23,8 +26,8 @@ iqdb_url = "https://danbooru.iqdb.org/"
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
 
 known_img_suffix = set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'])
-md5_m = re.compile(r'(?<!\w)([0-9a-fA-F]{32})(?!\w)')
-pid_m = re.compile(r'(?<!\w)(\d+_p\d+)(?!\w)')
+md5_m = re.compile(r'(?<![a-zA-Z0-9])([0-9a-fA-F]{32})(?![a-zA-Z0-9])')
+pid_m = re.compile(r'(?<![a-zA-Z0-9])(\d+_p\d+)(?![a-zA-Z0-9])')
 
 
 def img_dirwalk(path: Path):
@@ -63,10 +66,15 @@ def get_pidstr(path: Path):
 
 @retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
 @retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
+@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
 async def md5_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
     md5 = get_md5(path)
     await sema.acquire()
-    r = await sess.get('https://danbooru.donmai.us/posts.json', params={'tags': f'md5:{md5}'})
+    params = {'tags': f'md5:{md5}'}
+    if DD_API_KEY and DD_USER_NAME:
+        params['api_key'] = DD_API_KEY
+        params['login'] = DD_USER_NAME
+    r = await sess.get('https://danbooru.donmai.us/posts.json', params=params)
     r.raise_for_status()
     js = await r.json()
     sema.release()
@@ -77,13 +85,18 @@ async def md5_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
 
 @retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
 @retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
+@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
 async def pidstr_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
     pid_str = get_pidstr(path)
     if not pid_str:
         return None
     pid, _ = pid_str.split('_')
     await sema.acquire()
-    r = await sess.get('https://danbooru.donmai.us/posts.json', params={'tags': f'pixiv:{pid}'})
+    params = {'tags': f'pixiv:{pid}'}
+    if DD_API_KEY and DD_USER_NAME:
+        params['api_key'] = DD_API_KEY
+        params['login'] = DD_USER_NAME
+    r = await sess.get('https://danbooru.donmai.us/posts.json', params=params)
     r.raise_for_status()
     js = await r.json()
     sema.release()
@@ -94,6 +107,7 @@ async def pidstr_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore
 
 @retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
 @retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
+@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
 async def iqdb_lookup(
     sess: aiohttp.ClientSession,
     path: Path,
@@ -189,6 +203,14 @@ async def main(path: str | Path, iqdb_concurrency=2, danbooru_concurrency=2, ret
 
 if __name__ == '__main__':
 
+    if 'DD_API_KEY' in os.environ and 'DD_USER_NAME' in os.environ:
+        DD_API_KEY = os.environ['DD_API_KEY']
+        DD_USER_NAME = os.environ['DD_USER_NAME']
+        print(f'Found Danbooru API key and user name in environment variables. Logging in as \033[96m{DD_USER_NAME}\033[0m.')
+    elif 'DD_API_KEY' in os.environ or 'DD_USER_NAME' in os.environ:
+        print('You set one of DD_API_KEY or DD_USER_NAME but not both. Ignoring both.')
+    else:
+        print('No Danbooru API key and user name found. Continue as anonymous user.')
     args = get_args()
     LONG_SIDE = args.iqdb_long_side
     MD5_PREFER_FNAME = args.md5_prefer_fname
