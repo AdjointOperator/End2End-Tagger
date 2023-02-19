@@ -1,5 +1,7 @@
+import aiohttp
 import argparse
 import asyncio
+import functools
 import hashlib
 import json
 import io
@@ -8,9 +10,6 @@ import re
 from asyncio import gather, Semaphore
 from pathlib import Path
 from urllib.parse import urljoin
-
-import aiohttp
-import retry
 
 from lxml import html
 from PIL import Image
@@ -23,11 +22,31 @@ DD_USER_NAME = None
 MD5_PREFER_FNAME = True
 LONG_SIDE = 768
 iqdb_url = "https://danbooru.iqdb.org/"
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
+UA = 'Mozilla/4.08 (compatible; MSIE 6.0; Windows NT 5.1)'
 
 known_img_suffix = set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'])
 md5_m = re.compile(r'(?<![a-zA-Z0-9])([0-9a-fA-F]{32})(?![a-zA-Z0-9])')
 pid_m = re.compile(r'(?<![a-zA-Z0-9])(\d+_p\d+)(?![a-zA-Z0-9])')
+
+
+def async_retry(timeout: float = 1, backoff: float = 2, max_retry: int = 5):
+    def inner(func):
+        _timeout = timeout
+
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            timeout = _timeout
+            for i in range(max_retry):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    funcname = func.__name__
+                    print(f'\033[33m Caught {e} in {funcname}, retrying in {timeout} seconds...\033[0m')
+                    await asyncio.sleep(timeout)
+                timeout *= backoff
+            raise Exception('Too many retries')
+        return wrapper
+    return inner
 
 
 def img_dirwalk(path: Path):
@@ -64,9 +83,7 @@ def get_pidstr(path: Path):
     return None
 
 
-@retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
+@async_retry(max_retry=7, timeout=1, backoff=2)
 async def md5_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
     md5 = get_md5(path)
     await sema.acquire()
@@ -83,9 +100,7 @@ async def md5_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
     return js[0]
 
 
-@retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
+@async_retry(max_retry=7, timeout=1, backoff=2)
 async def pidstr_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore):
     pid_str = get_pidstr(path)
     if not pid_str:
@@ -105,9 +120,7 @@ async def pidstr_lookup(sess: aiohttp.ClientSession, path: Path, sema: Semaphore
             return j
 
 
-@retry.retry(aiohttp.ClientError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientConnectionError, tries=5, delay=1, backoff=1)
-@retry.retry(aiohttp.ClientResponseError, tries=7, delay=1, backoff=2)
+@async_retry(max_retry=7, timeout=1, backoff=2)
 async def iqdb_lookup(
     sess: aiohttp.ClientSession,
     path: Path,
