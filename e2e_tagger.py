@@ -135,7 +135,7 @@ def an_astolfo_is_1girl(all_tags: list[str]):
     gp1 = ['1girl', '2girls', '3girls', '4girls', '5girls', '6+girls']
     gp2 = ['1boy', '2boys', '3boys', '4boys', '5boys', '6+boys']
     gp3 = ['no_humans']
-    rm = ['genderswap', 'genderswap_(mtf)', 'genderswap_(ftm)', 'ambiguous_gender'] + gp1 + gp2
+    rm = ['genderswap', 'genderswap_(mtf)', 'genderswap_(ftm)', 'ambiguous_gender'] + gp1 + gp2 + gp3
     rm = set(rm)
     groups = [gp1, gp2, gp3]
     gp_indices = [np.array([all_tags.index(t) for t in g]) for g in groups]
